@@ -25,6 +25,8 @@ type FormState = {
   pincode: string
 }
 
+type FormErrors = Partial<Record<keyof FormState, string>>
+
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCartStore()
   const [loading, setLoading] = useState(false)
@@ -39,13 +41,43 @@ export default function CheckoutPage() {
     state: '',
     pincode: '',
   })
+  const [errors, setErrors] = useState<FormErrors>({})
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm({ ...form, [e.target.name]: e.target.value })
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setForm({ ...form, [name]: value })
+    // Clear that field's error as soon as the user edits it
+    if (errors[name as keyof FormState]) {
+      setErrors({ ...errors, [name]: undefined })
+    }
+  }
+
+  const validate = (): FormErrors => {
+    const next: FormErrors = {}
+    if (!form.firstName.trim()) next.firstName = 'Please enter your first name'
+    if (!form.email.trim()) {
+      next.email = 'Please enter your email'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      next.email = 'Please enter a valid email address'
+    }
+    if (!form.phone.trim()) {
+      next.phone = 'Please enter your phone number'
+    } else if (!/^\d{10}$/.test(form.phone.trim())) {
+      next.phone = 'Please enter a 10 digit phone number'
+    }
+    if (!form.address.trim()) next.address = 'Please enter your address'
+    if (!form.city.trim()) next.city = 'Please enter your city'
+    if (!form.pincode.trim()) next.pincode = 'Please enter your pincode'
+    return next
+  }
 
   const handleSubmit = async () => {
-    if (!form.firstName || !form.email || !form.phone || !form.address || !form.pincode) {
-      alert('Please fill all required fields')
+    const validationErrors = validate()
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors)
+      // Bring the first invalid field into view instead of a browser popup
+      const firstField = Object.keys(validationErrors)[0]
+      document.querySelector<HTMLInputElement>(`input[name="${firstField}"]`)?.focus()
       return
     }
     setLoading(true)
@@ -243,7 +275,7 @@ export default function CheckoutPage() {
       >
         {/* Left: form */}
         <div style={{ padding: '48px 80px 64px', maxWidth: 680, marginLeft: 'auto', width: '100%' }}>
-          <CheckoutForm form={form} onChange={onChange} onSubmit={handleSubmit} loading={loading} totalAmount={subtotal + 299} />
+          <CheckoutForm form={form} errors={errors} onChange={onChange} onSubmit={handleSubmit} loading={loading} totalAmount={subtotal + 299} />
         </div>
         {/* Right: summary */}
         <div style={{ background: 'var(--c-cream)', padding: '48px 80px 64px', maxWidth: 560, width: '100%' }}>
@@ -253,7 +285,7 @@ export default function CheckoutPage() {
 
       {/* Mobile: form below summary */}
       <div className="md:hidden" style={{ padding: '24px 22px 64px' }}>
-        <CheckoutForm form={form} onChange={onChange} onSubmit={handleSubmit} loading={loading} totalAmount={subtotal + 299} />
+        <CheckoutForm form={form} errors={errors} onChange={onChange} onSubmit={handleSubmit} loading={loading} totalAmount={subtotal + 299} />
       </div>
 
     </div>
@@ -264,12 +296,14 @@ export default function CheckoutPage() {
 
 function CheckoutForm({
   form,
+  errors,
   onChange,
   onSubmit,
   loading,
   totalAmount,
 }: {
   form: FormState
+  errors: FormErrors
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onSubmit: () => void
   loading: boolean
@@ -328,23 +362,23 @@ function CheckoutForm({
 
       {/* Contact */}
       <FormSection title="Contact" right="Sign in">
-        <Field label="Email *" name="email" value={form.email} onChange={onChange} type="email" />
+        <Field label="Email *" name="email" value={form.email} onChange={onChange} type="email" error={errors.email} />
         <CheckRow label="Email me with Duroo news and offers" defaultChecked />
       </FormSection>
 
       {/* Delivery */}
       <FormSection title="Delivery">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Field label="First name *" name="firstName" value={form.firstName} onChange={onChange} />
-          <Field label="Last name"    name="lastName"  value={form.lastName}  onChange={onChange} />
+          <Field label="First name *" name="firstName" value={form.firstName} onChange={onChange} error={errors.firstName} />
+          <Field label="Last name" name="lastName" value={form.lastName} onChange={onChange} />
         </div>
-        <Field label="Address *"    name="address"  value={form.address}  onChange={onChange} />
+        <Field label="Address *" name="address" value={form.address} onChange={onChange} error={errors.address} />
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 10 }}>
-          <Field label="City *"    name="city"    value={form.city}    onChange={onChange} />
-          <Field label="State"     name="state"   value={form.state}   onChange={onChange} />
-          <Field label="Pincode *" name="pincode" value={form.pincode} onChange={onChange} />
+          <Field label="City *" name="city" value={form.city} onChange={onChange} error={errors.city} />
+          <Field label="State" name="state" value={form.state} onChange={onChange} />
+          <Field label="Pincode *" name="pincode" value={form.pincode} onChange={onChange} error={errors.pincode} />
         </div>
-        <Field label="Phone *" name="phone" value={form.phone} onChange={onChange} type="tel" />
+        <Field label="Phone *" name="phone" value={form.phone} onChange={onChange} type="tel" error={errors.phone} />
       </FormSection>
 
       {/* Shipping method */}
@@ -421,12 +455,12 @@ function CheckoutForm({
               <Mono size={10} op={0.65}>VISA · MC · AMEX</Mono>
             </label>
             <div style={{ padding: '0 16px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Field label="Card number" name="_card" value="" onChange={() => {}} placeholder="•••• •••• •••• ••••" />
+              <Field label="Card number" name="_card" value="" onChange={() => { }} placeholder="•••• •••• •••• ••••" />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <Field label="Expiry (MM / YY)" name="_exp" value="" onChange={() => {}} />
-                <Field label="CVC" name="_cvc" value="" onChange={() => {}} />
+                <Field label="Expiry (MM / YY)" name="_exp" value="" onChange={() => { }} />
+                <Field label="CVC" name="_cvc" value="" onChange={() => { }} />
               </div>
-              <Field label="Name on card" name="_name" value="" onChange={() => {}} />
+              <Field label="Name on card" name="_name" value="" onChange={() => { }} />
               <CheckRow label="Use shipping address as billing address" defaultChecked />
             </div>
           </div>
@@ -712,6 +746,7 @@ function Field({
   onChange,
   type = 'text',
   placeholder,
+  error,
 }: {
   label: string
   name: string
@@ -719,49 +754,65 @@ function Field({
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   type?: string
   placeholder?: string
+  error?: string
 }) {
   const filled = value.length > 0
   return (
-    <div
-      style={{
-        position: 'relative',
-        border: '1px solid rgba(12,12,12,0.18)',
-        padding: filled ? '20px 16px 8px' : '16px 16px',
-        marginBottom: 10,
-        background: '#FFFFFF',
-      }}
-    >
-      {filled && (
-        <span
+    <div style={{ marginBottom: error ? 4 : 10 }}>
+      <div
+        style={{
+          position: 'relative',
+          border: error ? '1px solid #C0392B' : '1px solid rgba(12,12,12,0.18)',
+          padding: filled ? '20px 16px 8px' : '16px 16px',
+          background: '#FFFFFF',
+        }}
+      >
+        {filled && (
+          <span
+            style={{
+              position: 'absolute',
+              top: 6,
+              left: 16,
+              fontFamily: MF,
+              fontSize: 9,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              opacity: 0.55,
+            }}
+          >
+            {label.replace(' *', '')}
+          </span>
+        )}
+        <input
+          name={name}
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder={filled ? '' : label}
           style={{
-            position: 'absolute',
-            top: 6,
-            left: 16,
+            all: 'unset',
+            display: 'block',
+            width: '100%',
+            fontFamily: BF,
+            fontSize: 14,
+            color: filled ? 'var(--c-ink)' : 'rgba(12,12,12,0.45)',
+          }}
+        />
+      </div>
+      {error && (
+        <div
+          style={{
             fontFamily: MF,
-            fontSize: 9,
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            opacity: 0.55,
+            fontSize: 10,
+            letterSpacing: '0.02em',
+            color: '#C0392B',
+            marginTop: 4,
+            marginBottom: 10,
           }}
         >
-          {label.replace(' *', '')}
-        </span>
+          {error}
+        </div>
       )}
-      <input
-        name={name}
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={filled ? '' : label}
-        style={{
-          all: 'unset',
-          display: 'block',
-          width: '100%',
-          fontFamily: BF,
-          fontSize: 14,
-          color: filled ? 'var(--c-ink)' : 'rgba(12,12,12,0.45)',
-        }}
-      />
     </div>
   )
 }

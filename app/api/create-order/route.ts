@@ -1,8 +1,68 @@
 // app/api/create-order/route.ts
 import { NextResponse } from 'next/server'
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PHONE_RE = /^[0-9]{10}$/
+
+function validateRequest(form: any, items: any) {
+    const errors: string[] = []
+
+    if (!form || typeof form !== 'object') {
+        errors.push('Missing form data')
+        return errors
+    }
+
+    if (!form.firstName || typeof form.firstName !== 'string' || !form.firstName.trim()) {
+        errors.push('First name is required')
+    }
+    if (!form.email || !EMAIL_RE.test(form.email)) {
+        errors.push('Valid email is required')
+    }
+    if (!form.phone || !PHONE_RE.test(form.phone)) {
+        errors.push('Valid 10-digit phone number is required')
+    }
+    if (!form.address || typeof form.address !== 'string' || !form.address.trim()) {
+        errors.push('Address is required')
+    }
+    if (!form.city || typeof form.city !== 'string' || !form.city.trim()) {
+        errors.push('City is required')
+    }
+    if (!form.pincode || !/^[0-9]{6}$/.test(form.pincode)) {
+        errors.push('Valid 6-digit pincode is required')
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+        errors.push('Cart is empty')
+    } else {
+        for (const item of items) {
+            if (!item.id || typeof item.id !== 'number') {
+                errors.push('Invalid product in cart')
+                break
+            }
+            if (!item.quantity || typeof item.quantity !== 'number' || item.quantity < 1 || item.quantity > 20) {
+                errors.push('Invalid quantity — must be between 1 and 20')
+                break
+            }
+        }
+    }
+
+    return errors
+}
+
 export async function POST(req: Request) {
-    const { form, items } = await req.json()
+    let body: any
+    try {
+        body = await req.json()
+    } catch {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    const { form, items } = body
+
+    const validationErrors = validateRequest(form, items)
+    if (validationErrors.length > 0) {
+        return NextResponse.json({ error: validationErrors[0], errors: validationErrors }, { status: 400 })
+    }
 
     const auth = Buffer.from(
         `${process.env.WC_CONSUMER_KEY}:${process.env.WC_CONSUMER_SECRET}`
@@ -11,10 +71,9 @@ export async function POST(req: Request) {
     const lineItems = items.map((item: any) => ({
         product_id: item.id,
         quantity: item.quantity,
-        // Add size + color as meta data
         meta_data: [
-            ...(item.color ? [{ key: 'Color', value: item.color }] : []),
-            ...(item.size ? [{ key: 'Size', value: item.size }] : []),
+            ...(item.color ? [{ key: 'Color', value: String(item.color).slice(0, 50) }] : []),
+            ...(item.size ? [{ key: 'Size', value: String(item.size).slice(0, 20) }] : []),
         ],
     }))
 
@@ -24,39 +83,46 @@ export async function POST(req: Request) {
         set_paid: false,
         status: 'pending',
         billing: {
-            first_name: form.firstName,
-            last_name: form.lastName,
-            email: form.email,
-            phone: form.phone,
-            address_1: form.address,
-            city: form.city,
-            state: form.state,
-            postcode: form.pincode,
+            first_name: form.firstName.trim(),
+            last_name: (form.lastName || '').trim(),
+            email: form.email.trim(),
+            phone: form.phone.trim(),
+            address_1: form.address.trim(),
+            city: form.city.trim(),
+            state: (form.state || '').trim(),
+            postcode: form.pincode.trim(),
             country: 'IN',
         },
         shipping: {
-            first_name: form.firstName,
-            last_name: form.lastName,
-            address_1: form.address,
-            city: form.city,
-            state: form.state,
-            postcode: form.pincode,
+            first_name: form.firstName.trim(),
+            last_name: (form.lastName || '').trim(),
+            address_1: form.address.trim(),
+            city: form.city.trim(),
+            state: (form.state || '').trim(),
+            postcode: form.pincode.trim(),
             country: 'IN',
         },
         line_items: lineItems,
-        // Customer note
         customer_note: `Order placed via Duroo headless store. Items: ${items.map((i: any) => `${i.name} (${i.color || ''} ${i.size || ''} x${i.quantity})`).join(', ')}`,
     }
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_WP_URL}/wp-json/wc/v3/orders`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Basic ${auth}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(order),
-    })
+    try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_WP_URL}/wp-json/wc/v3/orders`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Basic ${auth}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(order),
+        })
 
-    const data = await res.json()
-    return NextResponse.json(data)
+        if (!res.ok) {
+            return NextResponse.json({ error: 'Failed to create order with WooCommerce' }, { status: 502 })
+        }
+
+        const data = await res.json()
+        return NextResponse.json(data)
+    } catch {
+        return NextResponse.json({ error: 'Order creation failed' }, { status: 500 })
+    }
 }
