@@ -1,12 +1,25 @@
 // app/cart/page.tsx
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useCartStore } from '@/store/cart'
 import Image from 'next/image'
 import Link from 'next/link'
 
 export default function CartPage() {
+    const [mounted, setMounted] = useState(false)
     const { items, removeItem, updateQuantity, total, count } = useCartStore()
+
+    useEffect(() => { setMounted(true) }, [])
+
+    // Show a neutral loading state until client has mounted + rehydrated from localStorage
+    if (!mounted) {
+        return (
+            <main className="max-w-2xl mx-auto px-4 py-24 text-center">
+                <div className="h-8 w-48 mx-auto bg-gray-800 rounded animate-pulse" />
+            </main>
+        )
+    }
 
     if (items.length === 0) {
         return (
@@ -26,7 +39,6 @@ export default function CartPage() {
     return (
         <main className="max-w-4xl mx-auto px-4 py-12">
             <h1 className="text-3xl font-bold mb-8">Cart ({count()})</h1>
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
 
                 {/* Cart Items */}
