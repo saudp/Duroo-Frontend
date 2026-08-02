@@ -2,7 +2,7 @@
 
 // app/checkout/page.tsx — Duroo Checkout
 // Two-column: form (left) + order summary (right). WooCommerce order creation preserved.
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCartStore } from '@/store/cart'
 import type { CartItem } from '@/store/cart'
 import Link from 'next/link'
@@ -29,6 +29,7 @@ type FormErrors = Partial<Record<keyof FormState, string>>
 
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCartStore()
+  const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [placed, setPlaced] = useState(false)
   const [form, setForm] = useState<FormState>({
@@ -42,6 +43,9 @@ export default function CheckoutPage() {
     pincode: '',
   })
   const [errors, setErrors] = useState<FormErrors>({})
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -72,6 +76,7 @@ export default function CheckoutPage() {
   }
 
   const handleSubmit = async () => {
+    setSubmitError(null)
     const validationErrors = validate()
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
@@ -92,10 +97,10 @@ export default function CheckoutPage() {
         clearCart()
         setPlaced(true)
       } else {
-        alert('Something went wrong. Please try again.')
+        setSubmitError('Something went wrong placing your order. Please try again.')
       }
     } catch {
-      alert('Error placing order. Please try again.')
+      setSubmitError('Error placing order. Please check your connection and try again.')
     }
     setLoading(false)
   }
@@ -159,45 +164,64 @@ export default function CheckoutPage() {
     )
   }
 
+  // Zustand's persist middleware rehydrates from localStorage after the initial
+  // render, so `items` is briefly [] on refresh. Wait for that before deciding
+  // whether the bag is actually empty. We still keep the topbar mounted in every
+  // state below (loading / empty / full) so the page doesn't jump between two
+  // unrelated full-screen layouts — that jump is what reads as a "flash".
+  if (!mounted) {
+    return (
+      <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
+        <Topbar count={0} />
+        <div style={{ padding: '48px clamp(22px,3vw,80px)', maxWidth: 1240, margin: '0 auto' }}>
+          <div className="animate-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680 }}>
+            {[1, 0.7, 0.85, 1, 0.6].map((w, i) => (
+              <div key={i} style={{ height: 48, width: `${w * 100}%`, background: 'rgba(12,12,12,0.06)' }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (items.length === 0) {
     return (
-      <div
-        style={{
-          background: 'var(--c-paper)',
-          color: 'var(--c-ink)',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-          padding: '48px 22px',
-          textAlign: 'center',
-        }}
-      >
-        <Wordmark size={22} />
-        <h1 style={{ fontFamily: HF, fontWeight: 500, fontSize: 28, letterSpacing: '-0.025em', margin: '24px 0 0' }}>
-          Your bag is empty
-        </h1>
-        <p style={{ fontFamily: BF, fontSize: 14, opacity: 0.7, margin: 0 }}>
-          Looks like you haven&apos;t added anything yet.
-        </p>
-        <Link
-          href="/products"
+      <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
+        <Topbar count={0} />
+        <div
           style={{
-            fontFamily: BF,
-            fontSize: 14,
-            fontWeight: 500,
-            background: 'var(--c-yellow)',
-            color: 'var(--c-ink)',
-            padding: '14px 28px',
-            borderRadius: 999,
-            textDecoration: 'none',
-            marginTop: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16,
+            padding: '96px 22px',
+            textAlign: 'center',
           }}
         >
-          Shop Now
-        </Link>
+          <h1 style={{ fontFamily: HF, fontWeight: 500, fontSize: 28, letterSpacing: '-0.025em', margin: 0 }}>
+            Your bag is empty
+          </h1>
+          <p style={{ fontFamily: BF, fontSize: 14, opacity: 0.7, margin: 0 }}>
+            Looks like you haven&apos;t added anything yet.
+          </p>
+          <Link
+            href="/products"
+            style={{
+              fontFamily: BF,
+              fontSize: 14,
+              fontWeight: 500,
+              background: 'var(--c-yellow)',
+              color: 'var(--c-ink)',
+              padding: '14px 28px',
+              borderRadius: 999,
+              textDecoration: 'none',
+              marginTop: 8,
+            }}
+          >
+            Shop Now
+          </Link>
+        </div>
       </div>
     )
   }
@@ -207,37 +231,7 @@ export default function CheckoutPage() {
   return (
     <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
 
-      {/* Minimal topbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: 'clamp(18px,1.8vw,24px) clamp(22px,3vw,48px)',
-          borderBottom: '1px solid rgba(12,12,12,0.08)',
-          background: 'var(--c-paper)',
-        }}
-      >
-        <Mono size={9} op={0.55}>
-          Secure checkout · <span style={{ opacity: 1 }}>step 1 of 1</span>
-        </Mono>
-        <Wordmark size={20} />
-        <div
-          style={{
-            width: 22,
-            height: 22,
-            border: '1px solid currentColor',
-            borderRadius: 4,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontFamily: HF,
-          }}
-        >
-          {items.reduce((s, i) => s + i.quantity, 0)}
-        </div>
-      </div>
+      <Topbar count={items.reduce((s, i) => s + i.quantity, 0)} />
 
       {/* Mobile: collapsible summary above form */}
       <div
@@ -275,7 +269,7 @@ export default function CheckoutPage() {
       >
         {/* Left: form */}
         <div style={{ padding: '48px 80px 64px', maxWidth: 680, marginLeft: 'auto', width: '100%' }}>
-          <CheckoutForm form={form} errors={errors} onChange={onChange} onSubmit={handleSubmit} loading={loading} totalAmount={subtotal + 299} />
+          <CheckoutForm form={form} errors={errors} submitError={submitError} onChange={onChange} onSubmit={handleSubmit} loading={loading} totalAmount={subtotal + 299} />
         </div>
         {/* Right: summary */}
         <div style={{ background: 'var(--c-cream)', padding: '48px 80px 64px', maxWidth: 560, width: '100%' }}>
@@ -285,7 +279,7 @@ export default function CheckoutPage() {
 
       {/* Mobile: form below summary */}
       <div className="md:hidden" style={{ padding: '24px 22px 64px' }}>
-        <CheckoutForm form={form} errors={errors} onChange={onChange} onSubmit={handleSubmit} loading={loading} totalAmount={subtotal + 299} />
+        <CheckoutForm form={form} errors={errors} submitError={submitError} onChange={onChange} onSubmit={handleSubmit} loading={loading} totalAmount={subtotal + 299} />
       </div>
 
     </div>
@@ -297,6 +291,7 @@ export default function CheckoutPage() {
 function CheckoutForm({
   form,
   errors,
+  submitError,
   onChange,
   onSubmit,
   loading,
@@ -304,6 +299,7 @@ function CheckoutForm({
 }: {
   form: FormState
   errors: FormErrors
+  submitError: string | null
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onSubmit: () => void
   loading: boolean
@@ -505,6 +501,23 @@ function CheckoutForm({
 
       {/* Pay button */}
       <div>
+        {submitError && (
+          <div
+            role="alert"
+            style={{
+              border: '1px solid #C0392B',
+              background: 'rgba(192,57,43,0.06)',
+              color: '#C0392B',
+              padding: '14px 16px',
+              marginBottom: 14,
+              fontFamily: BF,
+              fontSize: 13,
+              lineHeight: 1.5,
+            }}
+          >
+            {submitError}
+          </div>
+        )}
         <button
           onClick={onSubmit}
           disabled={loading}
@@ -704,6 +717,41 @@ function SummaryRow({ l, v, sub }: { l: string; v: string; sub?: boolean }) {
 }
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
+
+function Topbar({ count }: { count: number }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 'clamp(18px,1.8vw,24px) clamp(22px,3vw,48px)',
+        borderBottom: '1px solid rgba(12,12,12,0.08)',
+        background: 'var(--c-paper)',
+      }}
+    >
+      <Mono size={9} op={0.55}>
+        Secure checkout · <span style={{ opacity: 1 }}>step 1 of 1</span>
+      </Mono>
+      <Wordmark size={20} />
+      <div
+        style={{
+          width: 22,
+          height: 22,
+          border: '1px solid currentColor',
+          borderRadius: 4,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 12,
+          fontFamily: HF,
+        }}
+      >
+        {count}
+      </div>
+    </div>
+  )
+}
 
 function FormSection({
   title,
