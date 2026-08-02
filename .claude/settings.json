@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(vercel --version)",
+      "Bash(npx vercel *)",
+      "Bash(vercel whoami *)",
+      "PowerShell(vercel whoami 2>&1)",
+      "PowerShell(npx vercel whoami 2>&1)",
+      "PowerShell(npx vercel link --yes 2>&1)",
+      "PowerShell(npx vercel --prod --yes 2>&1)",
+      "PowerShell(npx vercel ls duroo-frontend 2>&1)"
+    ]
+  }
+}
