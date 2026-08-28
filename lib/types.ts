@@ -35,6 +35,44 @@ export type WCVariation = {
   attributes: { id: number; name: string; option: string }[]
 }
 
+// A WooCommerce order, as returned by GET /orders/{id}. Only the fields the
+// order-confirmation page actually renders — the real response has more.
+export type WCOrderAddress = {
+  first_name: string
+  last_name: string
+  address_1: string
+  address_2?: string
+  city: string
+  state: string
+  postcode: string
+  country: string
+}
+
+export type WCOrderLineItem = {
+  id: number
+  name: string
+  quantity: number
+  total: string
+  image?: { id: number; src: string }
+  meta_data?: { key: string; value: string; display_key?: string; display_value?: string }[]
+}
+
+export type WCOrder = {
+  id: number
+  number: string
+  status: string
+  date_created: string
+  currency_symbol?: string
+  total: string
+  shipping_total: string
+  discount_total: string
+  payment_method_title: string
+  billing: WCOrderAddress & { email: string; phone: string }
+  shipping: WCOrderAddress
+  line_items: WCOrderLineItem[]
+  shipping_lines: { method_title: string; total: string }[]
+}
+
 export type WCCategory = {
   id: number
   name: string

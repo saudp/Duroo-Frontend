@@ -1,6 +1,6 @@
 // lib/woocommerce.ts
 
-import type { WCCategory, WCProduct } from './types'
+import type { WCCategory, WCOrder, WCProduct } from './types'
 import { SORT_OPTIONS, type ParsedProductQuery } from './productFilters'
 
 const WC_URL = process.env.NEXT_PUBLIC_WP_URL
@@ -9,24 +9,41 @@ const WC_SECRET = process.env.WC_CONSUMER_SECRET
 
 const auth = Buffer.from(`${WC_KEY}:${WC_SECRET}`).toString('base64')
 
-async function wcFetchRaw(endpoint: string) {
+// Thrown by wcFetchRaw so callers that care (getOrderById) can tell "this
+// specific thing doesn't exist" (404) apart from "WooCommerce is unreachable
+// or misconfigured" (everything else) — a generic Error loses the status
+// code, which collapses that distinction.
+export class WCApiError extends Error {
+    status: number
+    constructor(status: number, message: string) {
+        super(message)
+        this.name = 'WCApiError'
+        this.status = status
+    }
+}
+
+async function wcFetchRaw(endpoint: string, opts: { cache?: boolean } = {}) {
+    const cache = opts.cache ?? true
     const res = await fetch(`${WC_URL}/wp-json/wc/v3/${endpoint}`, {
         headers: {
             Authorization: `Basic ${auth}`,
             'Content-Type': 'application/json',
         },
-        next: { revalidate: 3600 }, // cache for 1 hour (ISR)
+        // Product/category data is fine cached for an hour (ISR). Order
+        // lookups opt out — a customer landing on their own confirmation
+        // page right after paying should never see a stale cached order.
+        ...(cache ? { next: { revalidate: 3600 } } : { cache: 'no-store' as const }),
     })
 
     if (!res.ok) {
-        throw new Error(`WooCommerce API error: ${res.status}`)
+        throw new WCApiError(res.status, `WooCommerce API error: ${res.status}`)
     }
 
     return res
 }
 
-async function wcFetch(endpoint: string) {
-    const res = await wcFetchRaw(endpoint)
+async function wcFetch(endpoint: string, opts?: { cache?: boolean }) {
+    const res = await wcFetchRaw(endpoint, opts)
     return res.json()
 }
 
@@ -67,11 +84,20 @@ export async function getProductVariations(productId: number) {
 // ─── Orders ─────────────────────────────────────────────
 
 export async function getOrders() {
-    return wcFetch('orders?per_page=20')
+    return wcFetch('orders?per_page=20', { cache: false })
 }
 
-export async function getOrderById(id: number) {
-    return wcFetch(`orders/${id}`)
+// Returns null for a genuinely nonexistent order (404) so the caller can
+// render a normal "not found" state. Any other failure (WC unreachable, auth
+// broken, ...) rethrows — that's a real error, not "this order doesn't
+// exist", and callers should show an error state instead of a false negative.
+export async function getOrderById(id: number): Promise<WCOrder | null> {
+    try {
+        return await wcFetch(`orders/${id}`, { cache: false })
+    } catch (err) {
+        if (err instanceof WCApiError && err.status === 404) return null
+        throw err
+    }
 }
 
 // ─── Categories ─────────────────────────────────────────

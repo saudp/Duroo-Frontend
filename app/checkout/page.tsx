@@ -3,6 +3,7 @@
 // app/checkout/page.tsx — Duroo Checkout
 // Two-column: form (left) + order summary (right). WooCommerce order creation preserved.
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import { useCartStore } from '@/store/cart'
 import type { CartItem } from '@/store/cart'
@@ -39,10 +40,10 @@ type CouponStatus = 'idle' | 'checking' | 'error'
 const SHIPPING_COST: Record<ShippingMethod, number> = { standard: 0, express: 299 }
 
 export default function CheckoutPage() {
+  const router = useRouter()
   const { items, total, clearCart } = useCartStore()
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [placed, setPlaced] = useState(false)
   const [form, setForm] = useState<FormState>({
     firstName: '',
     lastName: '',
@@ -151,7 +152,11 @@ export default function CheckoutPage() {
       const data = await res.json()
       if (data.id) {
         clearCart()
-        setPlaced(true)
+        router.push(`/order-confirmation/${data.id}`)
+        // Deliberately leave `loading` true — the page is navigating away,
+        // so flipping it back to false here would just flash the form again
+        // for a frame before the redirect lands.
+        return
       } else {
         setSubmitError(data.error || 'Payment succeeded but we could not record your order. Please contact support.')
       }
@@ -224,64 +229,9 @@ export default function CheckoutPage() {
     }
   }
 
-  if (placed) {
-    return (
-      <div
-        style={{
-          background: 'var(--c-paper)',
-          color: 'var(--c-ink)',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 20,
-          padding: '48px 22px',
-          textAlign: 'center',
-        }}
-      >
-        <Wordmark size={22} />
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 999,
-            background: 'var(--c-yellow)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 24,
-            marginTop: 12,
-          }}
-        >
-          ✓
-        </div>
-        <h1 style={{ fontFamily: HF, fontWeight: 500, fontSize: 32, letterSpacing: '-0.025em', margin: 0 }}>
-          Order placed
-        </h1>
-        <p style={{ fontFamily: BF, fontSize: 14, opacity: 0.7, margin: 0, maxWidth: 380 }}>
-          Thanks for shopping with Duroo. You&apos;ll receive a confirmation email shortly.
-        </p>
-        <Link
-          href="/products"
-          style={{
-            fontFamily: BF,
-            fontSize: 15,
-            fontWeight: 500,
-            letterSpacing: '-0.01em',
-            background: 'var(--c-ink)',
-            color: 'var(--c-paper)',
-            padding: '16px 32px',
-            borderRadius: 999,
-            textDecoration: 'none',
-            marginTop: 8,
-          }}
-        >
-          Continue shopping
-        </Link>
-      </div>
-    )
-  }
+  // No more local "placed" full-page state here — finalizeOrder() redirects
+  // to a real /order-confirmation/[id] route once WooCommerce confirms the
+  // order, so this component just unmounts on success.
 
   // Zustand's persist middleware rehydrates from localStorage after the initial
   // render, so `items` is briefly [] on refresh. Wait for that before deciding
