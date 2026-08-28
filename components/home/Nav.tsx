@@ -142,10 +142,10 @@ export default function Nav() {
               Search
             </button>
           )}
-          {/* /account has no page — this pointed at a dead route. Full login
+          {/* /account had no page — this pointed at a dead route. Full login
               isn't in scope this weekend (no WP-side auth plugin exists
-              yet); /account/sign-in will become a guest order-lookup page. */}
-          <Link href="/account/sign-in" style={{ fontFamily: BF, fontSize: 14, fontWeight: 500, opacity: 0.7 }}>
+              yet), so this goes straight to the guest order-lookup page. */}
+          <Link href="/account/orders" style={{ fontFamily: BF, fontSize: 14, fontWeight: 500, opacity: 0.7 }}>
             Account
           </Link>
           <span style={{ fontFamily: BF, fontSize: 14, fontWeight: 500, opacity: 0.7 }}>
