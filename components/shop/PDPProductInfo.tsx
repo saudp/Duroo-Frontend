@@ -2,9 +2,10 @@
 
 // PDPProductInfo — interactive right panel on the PDP
 // Handles color/size selection + add-to-bag. Reads product data from props.
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useCartStore } from '@/store/cart'
 import Mono from '@/components/duroo/Mono'
+import type { WCVariation } from '@/lib/types'
 
 const HF = 'var(--ff-head)'
 const BF = 'var(--ff-body)'
@@ -48,8 +49,17 @@ interface ProductInfoProps {
   image: string
   colors: string[]
   sizes: string[]
+  type?: 'simple' | 'variable'
+  variations?: WCVariation[]
   shortDescription?: string
   description?: string
+}
+
+// Variation attribute names come back from WC as labels ("Color", "Size") —
+// match loosely the same way the PDP page already resolves parent attributes.
+function variantOption(v: WCVariation, key: 'color' | 'size'): string | undefined {
+  const names = key === 'color' ? ['color', 'colour'] : ['size']
+  return v.attributes.find((a) => names.includes(a.name.toLowerCase()))?.option
 }
 
 export default function PDPProductInfo({
@@ -62,6 +72,8 @@ export default function PDPProductInfo({
   image,
   colors,
   sizes,
+  type = 'simple',
+  variations = [],
   shortDescription,
   description,
 }: ProductInfoProps) {
@@ -69,16 +81,107 @@ export default function PDPProductInfo({
   const [selectedColor, setSelectedColor] = useState(colors[0] ?? '')
   const [selectedSize, setSelectedSize] = useState('')
   const [added, setAdded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const isVariable = type === 'variable' && variations.length > 0
+  const needsColor = colors.length > 0
+  const needsSize = sizes.length > 0
+  const selectionComplete = (!needsColor || !!selectedColor) && (!needsSize || !!selectedSize)
+
+  // The variation matching this exact color+size pick, once one exists for
+  // every attribute the product actually has.
+  const matchedVariation = useMemo(() => {
+    if (!isVariable || !selectionComplete) return undefined
+    return variations.find((v) => {
+      const vColor = variantOption(v, 'color')
+      const vSize = variantOption(v, 'size')
+      const colorOk = !needsColor || !vColor || vColor === selectedColor
+      const sizeOk = !needsSize || !vSize || vSize === selectedSize
+      return colorOk && sizeOk
+    })
+  }, [isVariable, selectionComplete, variations, needsColor, needsSize, selectedColor, selectedSize])
+
+  const isOutOfStock = !!matchedVariation && matchedVariation.stock_status === 'outofstock'
+  const combinationUnavailable = isVariable && selectionComplete && !matchedVariation
+
+  // A size button is greyed out only when every variation for that size
+  // (crossed with the currently selected color) is confirmed out of stock —
+  // if there's no variation data to check, don't block the button on a guess.
+  const isSizeAvailable = (size: string): boolean => {
+    if (!isVariable) return true
+    const matches = variations.filter((v) => {
+      const vSize = variantOption(v, 'size')
+      const vColor = variantOption(v, 'color')
+      const sizeOk = !vSize || vSize === size
+      const colorOk = !needsColor || !vColor || vColor === selectedColor
+      return sizeOk && colorOk
+    })
+    if (matches.length === 0) return true
+    return matches.some((v) => v.stock_status !== 'outofstock')
+  }
+
+  const variationPrices = variations.map((v) => parseFloat(v.price || '0')).filter((n) => !Number.isNaN(n))
+  const minVariantPrice = variationPrices.length ? Math.min(...variationPrices) : undefined
+  const maxVariantPrice = variationPrices.length ? Math.max(...variationPrices) : undefined
 
   const handleAdd = () => {
-    if (sizes.length > 0 && !selectedSize) { alert('Please select a size'); return }
-    addItem({ id, name, price, image, slug, quantity: 1, color: selectedColor, size: selectedSize })
+    setError(null)
+    if (needsColor && !selectedColor) { setError('Please select a color'); return }
+    if (needsSize && !selectedSize) { setError('Please select a size'); return }
+    if (isVariable && !matchedVariation) { setError('That combination isn’t available'); return }
+    if (isVariable && isOutOfStock) { setError('That combination is out of stock'); return }
+
+    const finalPrice = isVariable && matchedVariation ? matchedVariation.price : price
+    addItem({
+      id,
+      variationId: matchedVariation?.id,
+      name,
+      price: finalPrice,
+      image,
+      slug,
+      quantity: 1,
+      color: selectedColor,
+      size: selectedSize,
+    })
     setAdded(true)
     setTimeout(() => setAdded(false), 2200)
   }
 
-  const displayPrice = price ? `₹${price}` : 'Price on selection'
-  const displayWas = onSale && regularPrice ? `₹${regularPrice}` : null
+  // Display price: a matched variant's real price takes priority; otherwise,
+  // for a variable product with an incomplete selection, show the range so
+  // the shopper isn't misled by the parent product's (often stale) price.
+  let displayPrice: string
+  if (isVariable && matchedVariation) {
+    displayPrice = `₹${matchedVariation.price}`
+  } else if (combinationUnavailable) {
+    displayPrice = 'Unavailable'
+  } else if (isVariable && minVariantPrice !== undefined && maxVariantPrice !== undefined) {
+    displayPrice = minVariantPrice === maxVariantPrice
+      ? `₹${minVariantPrice}`
+      : `From ₹${minVariantPrice}`
+  } else {
+    displayPrice = price ? `₹${price}` : 'Price on selection'
+  }
+
+  // Only hard-block the button once the selection is complete and definitely
+  // bad (no matching variant, or that variant is out of stock). While the
+  // shopper still has picks left to make, keep it clickable so handleAdd can
+  // surface a targeted "please select a color/size" error instead.
+  const canAdd = !isVariable || !selectionComplete || (!!matchedVariation && !isOutOfStock)
+
+  const buttonLabel = added
+    ? '✓ Added to bag'
+    : isOutOfStock
+      ? 'Out of stock'
+      : combinationUnavailable
+        ? 'Combination unavailable'
+        : `Add to bag · ${displayPrice}`
+
+  // A matched variant has its own sale/regular price — use that over the
+  // parent's, which may not reflect this specific variant's discount.
+  const displayWas = isVariable && matchedVariation
+    ? (matchedVariation.on_sale && matchedVariation.regular_price ? `₹${matchedVariation.regular_price}` : null)
+    : (onSale && regularPrice ? `₹${regularPrice}` : null)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
@@ -144,7 +247,7 @@ export default function PDPProductInfo({
                 <button
                   key={c}
                   title={c}
-                  onClick={() => setSelectedColor(c)}
+                  onClick={() => { setError(null); setSelectedColor(c) }}
                   style={{
                     all: 'unset',
                     cursor: 'pointer',
@@ -175,13 +278,16 @@ export default function PDPProductInfo({
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(sizes.length, 6)}, 1fr)`, gap: 6 }}>
             {sizes.map((s) => {
               const active = s === selectedSize
+              const available = isSizeAvailable(s)
               return (
                 <button
                   key={s}
-                  onClick={() => setSelectedSize(s)}
+                  disabled={!available}
+                  onClick={() => { setError(null); setSelectedSize(s) }}
+                  title={available ? undefined : 'Out of stock in this color'}
                   style={{
                     all: 'unset',
-                    cursor: 'pointer',
+                    cursor: available ? 'pointer' : 'not-allowed',
                     textAlign: 'center',
                     padding: '12px 0',
                     fontFamily: MF,
@@ -190,6 +296,8 @@ export default function PDPProductInfo({
                     border: `1px solid ${active ? 'var(--c-ink)' : 'rgba(12,12,12,0.18)'}`,
                     background: active ? 'var(--c-ink)' : 'transparent',
                     color: active ? 'var(--c-paper)' : 'inherit',
+                    opacity: available ? 1 : 0.35,
+                    textDecoration: available ? 'none' : 'line-through',
                   }}
                 >
                   {s}
@@ -204,23 +312,29 @@ export default function PDPProductInfo({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6 }}>
         <button
           onClick={handleAdd}
+          disabled={!canAdd}
           style={{
             all: 'unset',
-            cursor: 'pointer',
+            cursor: canAdd ? 'pointer' : 'not-allowed',
             padding: '18px 0',
             textAlign: 'center',
             fontFamily: BF,
             fontSize: 15,
             fontWeight: 500,
             letterSpacing: '-0.01em',
-            background: added ? 'var(--c-ink)' : 'var(--c-yellow)',
-            color: added ? 'var(--c-paper)' : 'var(--c-ink)',
+            background: !canAdd ? 'rgba(12,12,12,0.12)' : added ? 'var(--c-ink)' : 'var(--c-yellow)',
+            color: !canAdd ? 'rgba(12,12,12,0.4)' : added ? 'var(--c-paper)' : 'var(--c-ink)',
             borderRadius: 999,
             transition: 'background 0.25s, color 0.25s',
           }}
         >
-          {added ? '✓ Added to bag' : `Add to bag · ${displayPrice}`}
+          {buttonLabel}
         </button>
+        {error && (
+          <Mono size={10} op={1} style={{ color: '#B3261E', textAlign: 'center' }}>
+            {error}
+          </Mono>
+        )}
       </div>
 
       {/* Fabric properties row */}

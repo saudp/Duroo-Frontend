@@ -4,6 +4,11 @@ import { persist } from 'zustand/middleware'
 
 export interface CartItem {
     id: number
+    // Present only for variable products — the specific color/size variant's
+    // WooCommerce variation id. Needed so the server can price this line from
+    // the variant's own price/stock, and so the WC order decrements the right
+    // variant's inventory instead of the parent product's.
+    variationId?: number
     name: string
     price: string
     image: string

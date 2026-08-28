@@ -62,6 +62,10 @@ function validateRequest(form: any, items: any, shippingMethod: any, payment: an
                 errors.push('Invalid quantity — must be between 1 and 20')
                 break
             }
+            if (item.variationId !== undefined && typeof item.variationId !== 'number') {
+                errors.push('Invalid variation in cart')
+                break
+            }
         }
     }
 
@@ -130,6 +134,10 @@ export async function POST(req: Request) {
 
     const lineItems = items.map((item: any) => ({
         product_id: item.id,
+        // WooCommerce decrements stock and prices the line off variation_id
+        // when present — product_id alone would hit the parent, which has no
+        // stock of its own for a variable product.
+        ...(typeof item.variationId === 'number' ? { variation_id: item.variationId } : {}),
         quantity: item.quantity,
         meta_data: [
             ...(item.color ? [{ key: 'Color', value: String(item.color).slice(0, 50) }] : []),

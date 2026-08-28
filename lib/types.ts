@@ -8,6 +8,8 @@ export type WCProduct = {
   on_sale: boolean
   status: 'publish' | 'draft'
   type: 'simple' | 'variable'
+  stock_status?: 'instock' | 'outofstock' | 'onbackorder'
+  stock_quantity?: number | null
   images: { src: string; alt: string }[]
   categories: { id: number; name: string; slug: string }[]
   attributes: {
@@ -15,6 +17,22 @@ export type WCProduct = {
     options: string[]
   }[]
   variations: number[]
+}
+
+// A single purchasable variant of a 'variable' WCProduct — fetched separately
+// from GET /products/{id}/variations. Its own price/stock are authoritative;
+// the parent product's price/stock fields don't reflect any specific variant.
+export type WCVariation = {
+  id: number
+  price: string
+  regular_price: string
+  sale_price: string
+  on_sale: boolean
+  stock_status: 'instock' | 'outofstock' | 'onbackorder'
+  stock_quantity: number | null
+  image?: { src: string; alt: string }
+  // e.g. [{ id: 0, name: 'Color', option: 'Black' }, { id: 0, name: 'Size', option: 'M' }]
+  attributes: { id: number; name: string; option: string }[]
 }
 
 export type WCCategory = {

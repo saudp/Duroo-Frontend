@@ -37,6 +37,14 @@ export async function getProductById(id: number) {
     return wcFetch(`products/${id}`)
 }
 
+// Variable products (type: 'variable') don't carry a real price/stock on the
+// parent — each color/size combination is its own "variation" with its own
+// price and stock_status. per_page=100 covers any realistic attribute matrix;
+// WC's default of 10 would silently truncate anything bigger.
+export async function getProductVariations(productId: number) {
+    return wcFetch(`products/${productId}/variations?per_page=100`)
+}
+
 // ─── Orders ─────────────────────────────────────────────
 
 export async function getOrders() {
