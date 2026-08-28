@@ -2,7 +2,7 @@
 
 // app/checkout/page.tsx — Duroo Checkout
 // Two-column: form (left) + order summary (right). WooCommerce order creation preserved.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import { useCartStore } from '@/store/cart'
@@ -11,6 +11,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Wordmark from '@/components/duroo/Wordmark'
 import Mono from '@/components/duroo/Mono'
+import { trackBeginCheckout } from '@/lib/analytics'
 
 declare global {
   interface Window {
@@ -64,6 +65,19 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState<string | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Fires once, after the cart has actually rehydrated from localStorage
+  // (mounted) and turns out non-empty — not on every re-render.
+  const beginCheckoutFired = useRef(false)
+  useEffect(() => {
+    if (!mounted || items.length === 0 || beginCheckoutFired.current) return
+    beginCheckoutFired.current = true
+    trackBeginCheckout(
+      items.map((i) => ({ id: i.id, name: i.name, price: parseFloat(i.price || '0'), quantity: i.quantity })),
+      total()
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, items.length])
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

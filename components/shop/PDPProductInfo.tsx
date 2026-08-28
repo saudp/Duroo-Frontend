@@ -2,10 +2,11 @@
 
 // PDPProductInfo — interactive right panel on the PDP
 // Handles color/size selection + add-to-bag. Reads product data from props.
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useCartStore } from '@/store/cart'
 import Mono from '@/components/duroo/Mono'
 import type { WCVariation } from '@/lib/types'
+import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 
 const HF = 'var(--ff-head)'
 const BF = 'var(--ff-body)'
@@ -83,6 +84,13 @@ export default function PDPProductInfo({
   const [added, setAdded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Fires once per PDP visit, using the base listing price — before any
+  // color/size pick there's no specific variant to report yet.
+  useEffect(() => {
+    trackViewItem({ id, name, price: parseFloat(price || '0') })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const isVariable = type === 'variable' && variations.length > 0
   const needsColor = colors.length > 0
   const needsSize = sizes.length > 0
@@ -143,6 +151,9 @@ export default function PDPProductInfo({
       color: selectedColor,
       size: selectedSize,
     })
+    // Real variant price, not the parent product's — matches what actually
+    // lands in the cart.
+    trackAddToCart({ id, name, price: parseFloat(finalPrice || '0') })
     setAdded(true)
     setTimeout(() => setAdded(false), 2200)
   }

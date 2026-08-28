@@ -7,6 +7,7 @@ import Wordmark from '@/components/duroo/Wordmark'
 import Mono from '@/components/duroo/Mono'
 import Link from 'next/link'
 import Image from 'next/image'
+import PurchaseTracking from '@/components/shop/PurchaseTracking'
 
 const HF = 'var(--ff-head)'
 const BF = 'var(--ff-body)'
@@ -43,6 +44,16 @@ export default async function OrderConfirmationPage({
 
   return (
     <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
+      <PurchaseTracking
+        orderId={order.number}
+        items={order.line_items.map((item) => ({
+          id: item.product_id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        }))}
+        value={parseFloat(order.total)}
+      />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(40px,6vw,80px) clamp(22px,3vw,48px)' }}>
 
         {/* Header */}

@@ -50,9 +50,11 @@ export type WCOrderAddress = {
 
 export type WCOrderLineItem = {
   id: number
+  product_id: number
   name: string
   quantity: number
   total: string
+  price: number
   image?: { id: number; src: string }
   meta_data?: { key: string; value: string; display_key?: string; display_value?: string }[]
 }
