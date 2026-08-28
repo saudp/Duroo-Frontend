@@ -1,8 +1,11 @@
 // app/products/page.tsx — Duroo PLP: Men's Bestsellers
-import { getProducts } from '@/lib/woocommerce'
+import { getCategories, getFilteredProducts } from '@/lib/woocommerce'
+import { parseProductQuery, buildProductsHref, toggleSingleValueHref, SORT_OPTIONS, type SortKey } from '@/lib/productFilters'
 import Mono from '@/components/duroo/Mono'
-import ProductCard from '@/components/home/ProductCard'
-import type { WCProduct } from '@/lib/types'
+import PLPFilters from '@/components/shop/PLPFilters'
+import LoadMoreProducts from '@/components/shop/LoadMoreProducts'
+import Link from 'next/link'
+import type { WCCategory } from '@/lib/types'
 
 export const revalidate = 3600
 
@@ -11,31 +14,41 @@ const BF = 'var(--ff-body)'
 const MF = 'var(--ff-mono)'
 const SF = 'var(--ff-serif)'
 
-const COLORS = [
-  { c: '#0A0A0A', n: 'Ink' },
-  { c: '#F5F4F0', n: 'Bone' },
-  { c: '#E6E2D7', n: 'Sand' },
-  { c: '#7C7973', n: 'Stone' },
-  { c: '#3A4E3B', n: 'Moss' },
-  { c: '#9C7A50', n: 'Cognac' },
-  { c: '#A8B5C4', n: 'Mist' },
-  { c: '#5A4A3C', n: 'Earth' },
-]
+const VIEW_COLS_CLASS: Record<string, string> = {
+  '2': 'md:grid-cols-2',
+  '3': 'md:grid-cols-3',
+  '4': 'md:grid-cols-4',
+}
 
-const FILTER_GROUPS: Array<{
-  head: string
-  items?: string[]
-  colors?: { c: string; n: string }[]
-}> = [
-    { head: 'Audience', items: ['Men', 'Women', 'Unisex'] },
-    { head: 'Category', items: ['Knitwear', 'Shirting', 'Trousers', 'Outerwear', 'Essentials'] },
-    { head: 'Color', colors: COLORS },
-    { head: 'Size', items: ['XS', 'S', 'M', 'L', 'XL', '2XL'] },
-    { head: 'Price', items: ['Under ₹500', '₹500 – ₹1,500', '₹1,500 – ₹3,000', '₹3,000+'] },
-  ]
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const sp = await searchParams
 
-export default async function ProductsPage() {
-  const products: WCProduct[] = await getProducts()
+  // Rebuild a real URLSearchParams from Next's parsed searchParams object —
+  // it's what every filter link, and the shared lib/productFilters parser,
+  // is built around.
+  const current = new URLSearchParams()
+  for (const [key, value] of Object.entries(sp)) {
+    if (value === undefined) continue
+    if (Array.isArray(value)) value.forEach((v) => current.append(key, v))
+    else current.set(key, value)
+  }
+
+  const query = parseProductQuery(current)
+  const view = current.get('view') === '2' || current.get('view') === '3' ? current.get('view')! : '4'
+  const gridColsClass = VIEW_COLS_CLASS[view]
+
+  const [{ products, total, totalPages }, categories]: [Awaited<ReturnType<typeof getFilteredProducts>>, WCCategory[]] =
+    await Promise.all([getFilteredProducts(query), getCategories()])
+
+  const withoutPage = new URLSearchParams(current)
+  withoutPage.delete('page')
+  const queryString = withoutPage.toString()
+
+  const hasActiveFilters = !!(query.category || query.colors.length || query.sizes.length || query.priceKey)
 
   return (
     <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
@@ -113,53 +126,102 @@ export default async function ProductsPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <button
-              style={{
-                all: 'unset',
-                cursor: 'pointer',
-                padding: '8px 14px',
-                fontFamily: MF,
-                fontSize: 10,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-                border: '1px solid rgba(12,12,12,0.18)',
-                borderRadius: 999,
-              }}
-            >
-              <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+            {/* Mobile filter disclosure — <details> so it needs no client JS */}
+            <details className="md:hidden">
+              <summary
+                style={{
+                  listStyle: 'none',
+                  cursor: 'pointer',
+                  padding: '8px 14px',
+                  fontFamily: MF,
+                  fontSize: 10,
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  border: `1px solid ${hasActiveFilters ? 'var(--c-ink)' : 'rgba(12,12,12,0.18)'}`,
+                  borderRadius: 999,
+                  display: 'inline-flex',
+                  gap: 8,
+                  alignItems: 'center',
+                }}
+              >
                 <span style={{ display: 'inline-block', width: 12, height: 1, background: 'currentColor' }} />
                 <span style={{ display: 'inline-block', width: 8, height: 1, background: 'currentColor' }} />
                 Filters
-              </span>
-            </button>
-            <Mono size={10} op={0.55}>{products.length} pieces</Mono>
+              </summary>
+              <div style={{ padding: '20px 4px', maxWidth: 320 }}>
+                <PLPFilters current={current} categories={categories} />
+              </div>
+            </details>
+            <Mono size={10} op={0.55}>{total} pieces</Mono>
           </div>
           <div className="hidden md:flex" style={{ alignItems: 'center', gap: 18 }}>
-            <Mono size={10} op={0.8}>
-              Sort ·{' '}
-              <span style={{ borderBottom: '1px solid currentColor', paddingBottom: 1 }}>Featured</span>
-            </Mono>
+            {/* Sort — <details> disclosure of real links */}
+            <details style={{ position: 'relative' }}>
+              <summary style={{ listStyle: 'none', cursor: 'pointer' }}>
+                <Mono size={10} op={0.8}>
+                  Sort ·{' '}
+                  <span style={{ borderBottom: '1px solid currentColor', paddingBottom: 1 }}>
+                    {SORT_OPTIONS[query.sort].label}
+                  </span>
+                </Mono>
+              </summary>
+              <div
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: '100%',
+                  marginTop: 8,
+                  background: 'var(--c-paper)',
+                  border: '1px solid rgba(12,12,12,0.14)',
+                  padding: 6,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  minWidth: 180,
+                  zIndex: 30,
+                }}
+              >
+                {(Object.keys(SORT_OPTIONS) as SortKey[]).map((key) => (
+                  <Link
+                    key={key}
+                    href={toggleSingleValueHref(current, 'sort', key)}
+                    style={{
+                      display: 'block',
+                      padding: '8px 10px',
+                      fontFamily: BF,
+                      fontSize: 13,
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      background: query.sort === key ? 'rgba(12,12,12,0.06)' : 'transparent',
+                    }}
+                  >
+                    {SORT_OPTIONS[key].label}
+                  </Link>
+                ))}
+              </div>
+            </details>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
               <Mono size={10} op={0.55}>View</Mono>
-              {[2, 3, 4].map((n) => (
-                <span
+              {(['2', '3', '4'] as const).map((n) => (
+                <Link
                   key={n}
+                  href={buildProductsHref(current, { view: n === '4' ? null : n, page: null })}
                   style={{
                     width: 22,
                     height: 22,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: n === 4 ? 'var(--c-ink)' : 'transparent',
-                    color: n === 4 ? 'var(--c-paper)' : 'inherit',
+                    background: n === view ? 'var(--c-ink)' : 'transparent',
+                    color: n === view ? 'var(--c-paper)' : 'inherit',
                     fontFamily: MF,
                     fontSize: 10,
-                    opacity: n === 4 ? 1 : 0.6,
-                    cursor: 'pointer',
+                    opacity: n === view ? 1 : 0.6,
+                    textDecoration: 'none',
                   }}
                 >
                   {n}
-                </span>
+                </Link>
               ))}
             </div>
           </div>
@@ -170,145 +232,21 @@ export default async function ProductsPage() {
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: 'clamp(20px,2vw,32px) clamp(22px,3vw,48px) clamp(56px,6vw,88px)' }}>
         <div className="md:grid" style={{ gridTemplateColumns: '220px 1fr', gap: 56, alignItems: 'flex-start' }}>
 
-          {/* Sidebar — desktop only */}
-          <aside
-            className="hidden md:flex"
-            style={{ flexDirection: 'column', gap: 28, position: 'sticky', top: 80 }}
-          >
-            {FILTER_GROUPS.map((g) => (
-              <div key={g.head}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <Mono size={10} op={0.55}>{g.head}</Mono>
-                  <span style={{ fontFamily: BF, fontSize: 14, opacity: 0.55 }}>–</span>
-                </div>
-
-                {g.head === 'Size' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                    {g.items?.map((s) => (
-                      <span
-                        key={s}
-                        style={{
-                          display: 'block',
-                          textAlign: 'center',
-                          padding: '10px 0',
-                          fontFamily: MF,
-                          fontSize: 11,
-                          letterSpacing: '0.18em',
-                          border: '1px solid rgba(12,12,12,0.18)',
-                          background: s === 'M' ? 'var(--c-ink)' : 'transparent',
-                          color: s === 'M' ? 'var(--c-paper)' : 'inherit',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                ) : g.head === 'Color' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                    {g.colors?.map((c, i) => (
-                      <div
-                        key={c.n}
-                        title={c.n}
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}
-                      >
-                        <span
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 999,
-                            background: c.c,
-                            display: 'inline-block',
-                            border: (c.c === '#F5F4F0' || c.c === '#E6E2D7') ? '1px solid rgba(12,12,12,0.15)' : 'none',
-                            outline: i === 0 ? '1px solid rgba(12,12,12,0.55)' : 'none',
-                            outlineOffset: 2,
-                          }}
-                        />
-                        <span
-                          style={{
-                            fontFamily: MF,
-                            fontSize: 8.5,
-                            letterSpacing: '0.12em',
-                            opacity: 0.55,
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {c.n}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                    {g.items?.map((it, i) => (
-                      <label
-                        key={it}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: BF, fontSize: 13.5 }}
-                      >
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            width: 13,
-                            height: 13,
-                            border: '1px solid rgba(12,12,12,0.35)',
-                            background: i === 0 ? 'var(--c-ink)' : 'transparent',
-                          }}
-                        />
-                        <span style={{ opacity: 0.85 }}>{it}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <button
-              style={{
-                all: 'unset',
-                cursor: 'pointer',
-                padding: '10px 16px',
-                fontFamily: MF,
-                fontSize: 10,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-                border: '1px solid rgba(12,12,12,0.35)',
-                borderRadius: 999,
-                textAlign: 'center',
-                marginTop: 4,
-              }}
-            >
-              Clear filters
-            </button>
+          {/* Sidebar — desktop only, mobile uses the <details> above */}
+          <aside className="hidden md:flex" style={{ flexDirection: 'column', position: 'sticky', top: 80 }}>
+            <PLPFilters current={current} categories={categories} />
           </aside>
 
           {/* Product grid */}
           <div>
-            <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: '12px', rowGap: '36px' }}>
-              {products.map((p: WCProduct, i: number) => (
-                <ProductCard key={p.id} product={p} priority={i < 4} />
-              ))}
-            </div>
-
-            <div style={{ textAlign: 'center', marginTop: 56 }}>
-              <button
-                style={{
-                  all: 'unset',
-                  cursor: 'pointer',
-                  padding: '14px 28px',
-                  fontFamily: MF,
-                  fontSize: 10,
-                  letterSpacing: '0.22em',
-                  textTransform: 'uppercase',
-                  border: '1px solid rgba(12,12,12,0.18)',
-                  borderRadius: 999,
-                }}
-              >
-                Load more →
-              </button>
-              <div style={{ marginTop: 18 }}>
-                <Mono size={10} op={0.5}>Showing {products.length} pieces</Mono>
-              </div>
-            </div>
+            <LoadMoreProducts
+              initialProducts={products}
+              initialPage={query.page}
+              totalPages={totalPages}
+              total={total}
+              queryString={queryString}
+              gridColsClass={gridColsClass}
+            />
           </div>
 
         </div>
