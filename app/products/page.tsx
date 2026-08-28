@@ -2,9 +2,6 @@
 import { getProducts } from '@/lib/woocommerce'
 import Mono from '@/components/duroo/Mono'
 import ProductCard from '@/components/home/ProductCard'
-import Announce from '@/components/home/Announce'
-import Nav from '@/components/home/Nav'
-import Footer from '@/components/home/Footer'
 import type { WCProduct } from '@/lib/types'
 
 export const revalidate = 3600
@@ -41,9 +38,6 @@ export default async function ProductsPage() {
   const products: WCProduct[] = await getProducts()
 
   return (
-    <>
-    <Announce />
-    <Nav />
     <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
 
       {/* ── Editorial header ── */}
@@ -320,7 +314,5 @@ export default async function ProductsPage() {
         </div>
       </div>
     </div>
-    <Footer />
-    </>
   )
 }

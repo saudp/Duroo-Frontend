@@ -2,9 +2,6 @@
 import { getProductBySlug, getProducts } from '@/lib/woocommerce'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import Nav from '@/components/home/Nav'
-import Footer from '@/components/home/Footer'
-import Announce from '@/components/home/Announce'
 import Mono from '@/components/duroo/Mono'
 import ProductRail from '@/components/home/ProductRail'
 import PDPProductInfo from '@/components/shop/PDPProductInfo'
@@ -42,9 +39,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
-      <Announce />
-      <Nav />
-
       {/* Breadcrumb */}
       <div
         style={{
@@ -293,8 +287,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       {/* ── Reviews ── */}
       <PDPReviews />
-
-      <Footer />
     </div>
   )
 }
