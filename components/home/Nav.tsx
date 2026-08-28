@@ -1,15 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCartStore } from '@/store/cart'
 import Wordmark from '@/components/duroo/Wordmark'
 import CartDrawer from '@/components/CartDrawer'
 
 const LINKS = ['Men', 'Women', 'Collections', 'Lookbook', 'Journal'] as const
+// No gender/audience taxonomy is confirmed to exist on duroo.in yet (same
+// open question flagged in PLPFilters.tsx for the PLP's Audience facet) —
+// Men/Women use the same `cat=` slug convention as a best-effort link rather
+// than both silently pointing at the same generic /products. If duroo.in
+// doesn't have categories with these slugs, the PLP already renders that as
+// a clean empty state, not an error.
 const LINK_HREFS: Record<string, string> = {
-  Men: '/products',
-  Women: '/products',
+  Men: '/products?cat=men',
+  Women: '/products?cat=women',
   Collections: '#',
   Lookbook: '#',
   Journal: '#',
@@ -19,11 +26,24 @@ const BF = 'var(--ff-body)'
 const MF = 'var(--ff-mono)'
 
 export default function Nav() {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const count = useCartStore((s) => s.count())
 
   useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus()
+  }, [searchOpen])
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const q = searchInputRef.current?.value.trim()
+    setSearchOpen(false)
+    if (q) router.push(`/products?search=${encodeURIComponent(q)}`)
+  }
 
   return (
     <>
@@ -82,10 +102,50 @@ export default function Nav() {
             alignItems: 'center',
           }}
         >
-          <span style={{ fontFamily: BF, fontSize: 14, fontWeight: 500, opacity: 0.7, cursor: 'pointer' }}>
-            Search
-          </span>
-          <Link href="/account" style={{ fontFamily: BF, fontSize: 14, fontWeight: 500, opacity: 0.7 }}>
+          {searchOpen ? (
+            <form onSubmit={submitSearch} style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                ref={searchInputRef}
+                type="search"
+                name="search"
+                placeholder="Search products…"
+                onBlur={() => setSearchOpen(false)}
+                style={{
+                  font: 'inherit',
+                  fontFamily: BF,
+                  fontSize: 14,
+                  border: 'none',
+                  borderBottom: '1px solid currentColor',
+                  background: 'transparent',
+                  outline: 'none',
+                  width: 160,
+                  padding: '2px 0',
+                  color: 'inherit',
+                }}
+              />
+            </form>
+          ) : (
+            <button
+              onClick={() => setSearchOpen(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                fontFamily: BF,
+                fontSize: 14,
+                fontWeight: 500,
+                opacity: 0.7,
+                cursor: 'pointer',
+                color: 'inherit',
+              }}
+            >
+              Search
+            </button>
+          )}
+          {/* /account has no page — this pointed at a dead route. Full login
+              isn't in scope this weekend (no WP-side auth plugin exists
+              yet); /account/sign-in will become a guest order-lookup page. */}
+          <Link href="/account/sign-in" style={{ fontFamily: BF, fontSize: 14, fontWeight: 500, opacity: 0.7 }}>
             Account
           </Link>
           <span style={{ fontFamily: BF, fontSize: 14, fontWeight: 500, opacity: 0.7 }}>
