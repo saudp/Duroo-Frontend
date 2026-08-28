@@ -51,10 +51,10 @@ export default function CartDrawer({ onClose }: { onClose: () => void }) {
                                     </p>
                                     <p className="drawer-item-price">₹{(parseFloat(item.price) * item.quantity).toLocaleString()}</p>
                                     <div className="drawer-qty">
-                                        <button className="drawer-qty-btn" onClick={() => updateQuantity(item.id, item.quantity - 1)}>−</button>
+                                        <button className="drawer-qty-btn" onClick={() => updateQuantity(item.id, item.quantity - 1, item.size, item.color)}>−</button>
                                         <span className="drawer-qty-num">{item.quantity}</span>
-                                        <button className="drawer-qty-btn" onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
-                                        <button className="drawer-remove" onClick={() => removeItem(item.id)}>Remove</button>
+                                        <button className="drawer-qty-btn" onClick={() => updateQuantity(item.id, item.quantity + 1, item.size, item.color)}>+</button>
+                                        <button className="drawer-remove" onClick={() => removeItem(item.id, item.size, item.color)}>Remove</button>
                                     </div>
                                 </div>
                             </div>

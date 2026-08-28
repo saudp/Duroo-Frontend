@@ -71,20 +71,20 @@ export default function CartPage() {
                                 {/* Quantity */}
                                 <div className="flex items-center gap-3 mt-3">
                                     <button
-                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                        onClick={() => updateQuantity(item.id, item.quantity - 1, item.size, item.color)}
                                         className="w-8 h-8 border border-gray-600 rounded-lg flex items-center justify-center hover:border-white transition-colors"
                                     >
                                         −
                                     </button>
                                     <span className="text-sm w-4 text-center">{item.quantity}</span>
                                     <button
-                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                        onClick={() => updateQuantity(item.id, item.quantity + 1, item.size, item.color)}
                                         className="w-8 h-8 border border-gray-600 rounded-lg flex items-center justify-center hover:border-white transition-colors"
                                     >
                                         +
                                     </button>
                                     <button
-                                        onClick={() => removeItem(item.id)}
+                                        onClick={() => removeItem(item.id, item.size, item.color)}
                                         className="ml-auto text-xs text-gray-500 hover:text-red-400 transition-colors"
                                     >
                                         Remove
