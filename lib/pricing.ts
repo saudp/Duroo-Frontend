@@ -2,9 +2,14 @@
 // Server-side, authoritative cart pricing. Never trust a client-supplied total —
 // recompute it from real WooCommerce product prices so the Razorpay charge and
 // the WooCommerce order can't be forged by editing localStorage/devtools.
-import { getProductById } from './woocommerce'
+import { getProductById, getProductVariations } from './woocommerce'
+import type { WCVariation } from './types'
 
-export type PricedItem = { id: number; quantity: number }
+// id is always the parent product id. variationId, when present, means this
+// line is a specific color/size variant — it must be priced from *its own*
+// price/stock, never the parent's, or a customer could be charged the wrong
+// amount for whichever variant happens to be cheaper/more expensive.
+export type PricedItem = { id: number; quantity: number; variationId?: number }
 
 const SHIPPING_COST: Record<string, number> = { standard: 0, express: 299 }
 
@@ -15,13 +20,46 @@ export function shippingCostFor(shippingMethod: string): number {
 export async function computeSubtotal(items: PricedItem[]): Promise<number> {
     const uniqueIds = [...new Set(items.map((i) => i.id))]
     const products = await Promise.all(uniqueIds.map((id) => getProductById(id)))
-    const priceById = new Map(products.map((p) => [p.id, parseFloat(p.price || '0')]))
+    const productById = new Map(products.map((p) => [p.id, p]))
+
+    // Only fetch variations for products that actually have a variant line
+    // item in the cart — most carts won't touch this at all.
+    const variantProductIds = [...new Set(items.filter((i) => i.variationId != null).map((i) => i.id))]
+    const variationLists: WCVariation[][] = await Promise.all(
+        variantProductIds.map((id) => getProductVariations(id))
+    )
+    const variationById = new Map<number, WCVariation>()
+    for (const list of variationLists) {
+        for (const v of list) variationById.set(v.id, v)
+    }
 
     return items.reduce((sum, item) => {
-        const price = priceById.get(item.id)
+        let price: number | undefined
+        let stockStatus: string | undefined
+
+        if (item.variationId != null) {
+            const variation = variationById.get(item.variationId)
+            if (!variation) {
+                throw new Error(`Variation ${item.variationId} not found for product ${item.id}`)
+            }
+            price = parseFloat(variation.price || '0')
+            stockStatus = variation.stock_status
+        } else {
+            const product = productById.get(item.id)
+            if (!product) {
+                throw new Error(`Product ${item.id} could not be priced`)
+            }
+            price = parseFloat(product.price || '0')
+            stockStatus = product.stock_status
+        }
+
         if (price === undefined || Number.isNaN(price)) {
             throw new Error(`Product ${item.id} could not be priced`)
         }
+        if (stockStatus === 'outofstock') {
+            throw new Error(`Product ${item.id} is out of stock`)
+        }
+
         return sum + price * item.quantity
     }, 0)
 }

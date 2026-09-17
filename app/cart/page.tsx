@@ -5,6 +5,12 @@ import { useState, useEffect } from 'react'
 import { useCartStore } from '@/store/cart'
 import Image from 'next/image'
 import Link from 'next/link'
+import Mono from '@/components/duroo/Mono'
+
+const HF = 'var(--ff-head)'
+const BF = 'var(--ff-body)'
+const MF = 'var(--ff-mono)'
+const SF = 'var(--ff-serif)'
 
 export default function CartPage() {
     const [mounted, setMounted] = useState(false)
@@ -15,130 +21,227 @@ export default function CartPage() {
     // Show a neutral loading state until client has mounted + rehydrated from localStorage
     if (!mounted) {
         return (
-            <main className="max-w-2xl mx-auto px-4 py-24 text-center">
-                <div className="h-8 w-48 mx-auto bg-gray-800 rounded animate-pulse" />
-            </main>
+            <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
+                <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(48px,6vw,88px) clamp(22px,3vw,48px)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {[1, 0.7, 0.85].map((w, i) => (
+                            <div key={i} className="animate-pulse" style={{ height: 48, width: `${w * 100}%`, background: 'rgba(12,12,12,0.06)' }} />
+                        ))}
+                    </div>
+                </div>
+            </div>
         )
     }
 
     if (items.length === 0) {
         return (
-            <main className="max-w-2xl mx-auto px-4 py-24 text-center">
-                <h1 className="text-3xl font-bold mb-4">Your cart is empty</h1>
-                <p className="text-gray-400 mb-8">Looks like you haven't added anything yet.</p>
+            <div
+                style={{
+                    background: 'var(--c-paper)',
+                    color: 'var(--c-ink)',
+                    minHeight: '60vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 16,
+                    padding: '80px 22px',
+                    textAlign: 'center',
+                }}
+            >
+                <h1 style={{ fontFamily: HF, fontWeight: 500, fontSize: 'clamp(28px,3vw,36px)', letterSpacing: '-0.025em', margin: 0 }}>
+                    Your cart is <span style={{ fontFamily: SF, fontStyle: 'italic', fontWeight: 400 }}>empty.</span>
+                </h1>
+                <p style={{ fontFamily: BF, fontSize: 14, opacity: 0.65, margin: 0, maxWidth: 340 }}>
+                    Looks like you haven&apos;t added anything yet.
+                </p>
                 <Link
                     href="/products"
-                    className="inline-block bg-white text-black px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
+                    style={{
+                        marginTop: 8,
+                        fontFamily: BF,
+                        fontSize: 15,
+                        fontWeight: 500,
+                        letterSpacing: '-0.01em',
+                        background: 'var(--c-yellow)',
+                        color: 'var(--c-ink)',
+                        padding: '16px 32px',
+                        borderRadius: 999,
+                        textDecoration: 'none',
+                    }}
                 >
-                    Shop Now
+                    Shop now
                 </Link>
-            </main>
+            </div>
         )
     }
 
     return (
-        <main className="max-w-4xl mx-auto px-4 py-12">
-            <h1 className="text-3xl font-bold mb-8">Cart ({count()})</h1>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
+            <div style={{ maxWidth: 1080, margin: '0 auto', padding: 'clamp(28px,3.5vw,52px) clamp(22px,3vw,48px) clamp(56px,6vw,88px)' }}>
 
-                {/* Cart Items */}
-                <div className="lg:col-span-2 space-y-4">
-                    {items.map((item) => (
-                        <div key={`${item.id}-${item.size}-${item.color}`} className="flex gap-4 border border-gray-800 rounded-xl p-4">
+                <h1 style={{ fontFamily: HF, fontWeight: 500, fontSize: 'clamp(26px,3vw,36px)', letterSpacing: '-0.025em', margin: '0 0 32px' }}>
+                    Your cart <span style={{ opacity: 0.5, fontWeight: 400 }}>({count()})</span>
+                </h1>
 
-                            {/* Image */}
-                            {item.image && (
-                                <div className="w-24 h-24 bg-gray-900 rounded-lg overflow-hidden flex-shrink-0">
-                                    <Image
-                                        src={item.image}
-                                        alt={item.name}
-                                        width={96}
-                                        height={96}
-                                        className="w-full h-full object-cover"
-                                    />
+                <div className="md:grid" style={{ gridTemplateColumns: '1fr 380px', gap: 56, alignItems: 'flex-start' }}>
+
+                    {/* Cart items */}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {items.map((item) => (
+                            <div
+                                key={`${item.id}-${item.size}-${item.color}`}
+                                style={{
+                                    display: 'flex',
+                                    gap: 18,
+                                    padding: '24px 0',
+                                    borderBottom: '1px solid rgba(12,12,12,0.10)',
+                                    alignItems: 'flex-start',
+                                }}
+                            >
+                                {/* Image */}
+                                {item.image && (
+                                    <div style={{ position: 'relative', width: 96, height: 120, flexShrink: 0, background: 'var(--c-cream)' }}>
+                                        <Image src={item.image} alt={item.name} fill className="object-cover" sizes="96px" />
+                                    </div>
+                                )}
+
+                                {/* Info */}
+                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                        <span style={{ fontFamily: BF, fontSize: 15, fontWeight: 500 }}>{item.name}</span>
+                                        <span style={{ fontFamily: HF, fontWeight: 500, fontSize: 15, letterSpacing: '-0.02em', flexShrink: 0 }}>
+                                            ₹{(parseFloat(item.price) * item.quantity).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    {(item.color || item.size) && (
+                                        <Mono size={10} op={0.55}>
+                                            {[item.color, item.size].filter(Boolean).join(' · ')}
+                                        </Mono>
+                                    )}
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid rgba(12,12,12,0.18)' }}>
+                                            <button
+                                                aria-label="Decrease quantity"
+                                                onClick={() => updateQuantity(item.id, item.quantity - 1, item.size, item.color)}
+                                                style={{
+                                                    all: 'unset', cursor: 'pointer', width: 32, height: 32,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontFamily: MF, fontSize: 14,
+                                                }}
+                                            >
+                                                −
+                                            </button>
+                                            <span style={{ fontFamily: MF, fontSize: 12, width: 24, textAlign: 'center' }}>{item.quantity}</span>
+                                            <button
+                                                aria-label="Increase quantity"
+                                                onClick={() => updateQuantity(item.id, item.quantity + 1, item.size, item.color)}
+                                                style={{
+                                                    all: 'unset', cursor: 'pointer', width: 32, height: 32,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontFamily: MF, fontSize: 14,
+                                                }}
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => removeItem(item.id, item.size, item.color)}
+                                            style={{
+                                                all: 'unset',
+                                                cursor: 'pointer',
+                                                fontFamily: MF,
+                                                fontSize: 10,
+                                                letterSpacing: '0.18em',
+                                                textTransform: 'uppercase',
+                                                opacity: 0.5,
+                                                borderBottom: '1px solid currentColor',
+                                                paddingBottom: 1,
+                                            }}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
                                 </div>
-                            )}
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold">{item.name}</h3>
-                                <p className="text-sm text-gray-400 mt-1">
-                                    {item.color && <span>Color: {item.color} · </span>}
-                                    {item.size && <span>Size: {item.size}</span>}
-                                </p>
-                                <p className="text-sm font-medium mt-1">₹{item.price}</p>
-
-                                {/* Quantity */}
-                                <div className="flex items-center gap-3 mt-3">
-                                    <button
-                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                        className="w-8 h-8 border border-gray-600 rounded-lg flex items-center justify-center hover:border-white transition-colors"
-                                    >
-                                        −
-                                    </button>
-                                    <span className="text-sm w-4 text-center">{item.quantity}</span>
-                                    <button
-                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                        className="w-8 h-8 border border-gray-600 rounded-lg flex items-center justify-center hover:border-white transition-colors"
-                                    >
-                                        +
-                                    </button>
-                                    <button
-                                        onClick={() => removeItem(item.id)}
-                                        className="ml-auto text-xs text-gray-500 hover:text-red-400 transition-colors"
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
                             </div>
+                        ))}
 
-                            {/* Item Total */}
-                            <div className="text-right flex-shrink-0">
-                                <p className="font-semibold">₹{(parseFloat(item.price) * item.quantity).toLocaleString()}</p>
-                            </div>
-
+                        <div style={{ marginTop: 20 }}>
+                            <Link
+                                href="/products"
+                                style={{
+                                    fontFamily: MF,
+                                    fontSize: 10,
+                                    letterSpacing: '0.22em',
+                                    textTransform: 'uppercase',
+                                    borderBottom: '1px solid currentColor',
+                                    paddingBottom: 2,
+                                }}
+                            >
+                                ← Continue shopping
+                            </Link>
                         </div>
-                    ))}
-                </div>
+                    </div>
 
-                {/* Order Summary */}
-                <div className="lg:col-span-1">
-                    <div className="border border-gray-800 rounded-xl p-6 sticky top-24 space-y-4">
-                        <h2 className="font-semibold text-lg">Order Summary</h2>
+                    {/* Order summary */}
+                    <div className="mt-6 md:mt-0" style={{ background: 'var(--c-cream)', padding: 'clamp(24px,3vw,32px)' }}>
+                        <h2 style={{ fontFamily: HF, fontWeight: 500, fontSize: 20, letterSpacing: '-0.025em', margin: '0 0 20px' }}>
+                            Order summary
+                        </h2>
 
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Subtotal</span>
-                                <span>₹{total().toLocaleString()}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: BF, fontSize: 14 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ opacity: 0.65 }}>Subtotal</span>
+                                <span style={{ fontFamily: HF, fontWeight: 500, fontSize: 13, letterSpacing: '-0.02em' }}>
+                                    ₹{total().toLocaleString()}
+                                </span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Shipping</span>
-                                <span className="text-green-400">Free</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ opacity: 0.65 }}>Shipping</span>
+                                <Mono size={10} op={0.65}>Calculated at checkout</Mono>
                             </div>
                         </div>
 
-                        <div className="border-t border-gray-800 pt-4 flex justify-between font-semibold">
-                            <span>Total</span>
-                            <span>₹{total().toLocaleString()}</span>
+                        <div
+                            style={{
+                                marginTop: 16,
+                                paddingTop: 16,
+                                borderTop: '1px solid rgba(12,12,12,0.14)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'baseline',
+                            }}
+                        >
+                            <h4 style={{ fontFamily: HF, fontWeight: 500, fontSize: 18, letterSpacing: '-0.025em', margin: 0 }}>Total</h4>
+                            <div style={{ fontFamily: HF, fontWeight: 500, fontSize: 24, letterSpacing: '-0.03em' }}>
+                                ₹{total().toLocaleString()}
+                            </div>
                         </div>
 
                         <Link
                             href="/checkout"
-                            className="block w-full py-4 bg-white text-black font-semibold rounded-xl text-center hover:bg-gray-100 transition-colors"
+                            style={{
+                                display: 'block',
+                                textAlign: 'center',
+                                marginTop: 20,
+                                fontFamily: BF,
+                                fontSize: 15,
+                                fontWeight: 500,
+                                letterSpacing: '-0.01em',
+                                background: 'var(--c-yellow)',
+                                color: 'var(--c-ink)',
+                                padding: '16px 0',
+                                borderRadius: 999,
+                                textDecoration: 'none',
+                            }}
                         >
-                            Proceed to Checkout
-                        </Link>
-
-                        <Link
-                            href="/products"
-                            className="block w-full py-3 border border-gray-700 rounded-xl text-center text-sm text-gray-400 hover:border-gray-500 transition-colors"
-                        >
-                            Continue Shopping
+                            Proceed to checkout
                         </Link>
                     </div>
-                </div>
 
+                </div>
             </div>
-        </main>
+        </div>
     )
 }

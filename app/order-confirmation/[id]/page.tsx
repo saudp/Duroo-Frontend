@@ -1,0 +1,164 @@
+// app/order-confirmation/[id]/page.tsx — real, reloadable/shareable order
+// confirmation. Replaces checkout's old local `placed` boolean, which showed
+// generic "Order placed" copy with no real order number and vanished on
+// refresh since it lived only in component state.
+import { getOrderById } from '@/lib/woocommerce'
+import Wordmark from '@/components/duroo/Wordmark'
+import Link from 'next/link'
+import PurchaseTracking from '@/components/shop/PurchaseTracking'
+import OrderDetails from '@/components/shop/OrderDetails'
+
+const HF = 'var(--ff-head)'
+const BF = 'var(--ff-body)'
+
+export default async function OrderConfirmationPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  const orderId = Number(id)
+
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    return <NotFoundState />
+  }
+
+  let order
+  try {
+    order = await getOrderById(orderId)
+  } catch {
+    return <ErrorState />
+  }
+
+  if (!order) {
+    return <NotFoundState />
+  }
+
+  return (
+    <div style={{ background: 'var(--c-paper)', color: 'var(--c-ink)', minHeight: '100vh' }}>
+      <PurchaseTracking
+        orderId={order.number}
+        items={order.line_items.map((item) => ({
+          id: item.product_id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        }))}
+        value={parseFloat(order.total)}
+      />
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(40px,6vw,80px) clamp(22px,3vw,48px)' }}>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,4vw,56px)' }}>
+          <Wordmark size={20} />
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 999,
+              background: 'var(--c-yellow)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 24,
+              margin: '20px auto 0',
+            }}
+          >
+            ✓
+          </div>
+          <h1 style={{ fontFamily: HF, fontWeight: 500, fontSize: 'clamp(26px,3vw,36px)', letterSpacing: '-0.025em', margin: '20px 0 8px' }}>
+            Order confirmed
+          </h1>
+          <p style={{ fontFamily: BF, fontSize: 14, opacity: 0.7, margin: 0 }}>
+            Thanks for shopping with Duroo, {order.billing.first_name}. A confirmation email is on its way to{' '}
+            {order.billing.email}.
+          </p>
+        </div>
+
+        <OrderDetails order={order} />
+
+        <div style={{ textAlign: 'center', marginTop: 40 }}>
+          <Link
+            href="/products"
+            style={{
+              fontFamily: BF,
+              fontSize: 15,
+              fontWeight: 500,
+              letterSpacing: '-0.01em',
+              background: 'var(--c-ink)',
+              color: 'var(--c-paper)',
+              padding: '16px 32px',
+              borderRadius: 999,
+              textDecoration: 'none',
+              display: 'inline-block',
+            }}
+          >
+            Continue shopping
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function NotFoundState() {
+  return (
+    <CenteredMessage
+      heading="We couldn’t find that order"
+      body="The order link looks incorrect, or the order may no longer exist. If you just completed a payment, check your email for a confirmation, or contact support with your payment reference."
+    />
+  )
+}
+
+function ErrorState() {
+  return (
+    <CenteredMessage
+      heading="Something went wrong"
+      body="We couldn't load your order right now. If you just completed a payment, don't worry — it went through. Please refresh in a moment, or contact support if this keeps happening."
+    />
+  )
+}
+
+function CenteredMessage({ heading, body }: { heading: string; body: string }) {
+  return (
+    <div
+      style={{
+        background: 'var(--c-paper)',
+        color: 'var(--c-ink)',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 20,
+        padding: '48px 22px',
+        textAlign: 'center',
+      }}
+    >
+      <Wordmark size={22} />
+      <h1 style={{ fontFamily: HF, fontWeight: 500, fontSize: 28, letterSpacing: '-0.025em', margin: 0, maxWidth: 420 }}>
+        {heading}
+      </h1>
+      <p style={{ fontFamily: BF, fontSize: 14, opacity: 0.7, margin: 0, maxWidth: 380 }}>
+        {body}
+      </p>
+      <Link
+        href="/products"
+        style={{
+          fontFamily: BF,
+          fontSize: 15,
+          fontWeight: 500,
+          letterSpacing: '-0.01em',
+          background: 'var(--c-ink)',
+          color: 'var(--c-paper)',
+          padding: '16px 32px',
+          borderRadius: 999,
+          textDecoration: 'none',
+          marginTop: 8,
+        }}
+      >
+        Continue shopping
+      </Link>
+    </div>
+  )
+}

@@ -11,7 +11,8 @@ function validateItems(items: unknown): items is PricedItem[] {
             typeof item.id === 'number' &&
             typeof item.quantity === 'number' &&
             item.quantity >= 1 &&
-            item.quantity <= 20
+            item.quantity <= 20 &&
+            (item.variationId === undefined || typeof item.variationId === 'number')
     )
 }
 

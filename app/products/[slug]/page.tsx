@@ -1,11 +1,11 @@
 // app/products/[slug]/page.tsx — Duroo PDP
-import { getProductBySlug, getProducts } from '@/lib/woocommerce'
+import { getProductBySlug, getProducts, getProductVariations } from '@/lib/woocommerce'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import Mono from '@/components/duroo/Mono'
 import ProductRail from '@/components/home/ProductRail'
 import PDPProductInfo from '@/components/shop/PDPProductInfo'
-import type { WCProduct } from '@/lib/types'
+import type { WCProduct, WCVariation } from '@/lib/types'
 
 export const revalidate = 3600
 
@@ -22,6 +22,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   ])
 
   if (!product) return notFound()
+
+  // Variable products price/stock per color+size combination — fetch those
+  // combinations up front so the PDP can show a real price and disable
+  // sold-out sizes instead of trusting the parent product's price/stock.
+  const variations: WCVariation[] = product.type === 'variable'
+    ? await getProductVariations(product.id)
+    : []
 
   const colors = product.attributes?.find(
     (a) => a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colour'
@@ -123,6 +130,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               image={product.images[0]?.src ?? ''}
               colors={colors}
               sizes={sizes}
+              type={product.type}
+              variations={variations}
               shortDescription={(product as any).short_description}
               description={(product as any).description}
             />
@@ -168,6 +177,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               image={product.images[0]?.src ?? ''}
               colors={colors}
               sizes={sizes}
+              type={product.type}
+              variations={variations}
               shortDescription={(product as any).short_description}
               description={(product as any).description}
             />
