@@ -7,9 +7,9 @@ import Mono from '@/components/duroo/Mono'
 import CTA from '@/components/duroo/CTA'
 import UnderLink from '@/components/duroo/UnderLink'
 
-const GHEAD = 'var(--ff-geist)'
-const FSERIF = 'var(--ff-serif)'
-const FBODY = 'var(--ff-body)'
+const HHEAD = 'var(--ff-head)'   // Instrument Sans — now shared with the rest of the section-header system
+const HSERIF = 'var(--ff-serif)' // Instrument Serif italic — "Collection." only
+const HBODY = 'var(--ff-body)'   // Afacad Flux
 
 export default function Hero({ images }: { images: { src: string; alt: string }[] }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true })
@@ -26,127 +26,37 @@ export default function Hero({ images }: { images: { src: string; alt: string }[
     return () => { emblaApi.off('select', onSelect) }
   }, [emblaApi, onSelect])
 
-  const prev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi])
-  const next = useCallback(() => emblaApi?.scrollNext(), [emblaApi])
-
   const slides = images.length > 0 ? images : [null, null, null, null]
 
   return (
     <section
-      style={{ position: 'relative', background: 'var(--c-night)', overflow: 'hidden' }}
-      className="h-[640px] md:h-[800px]"
+      style={{ position: 'relative', display: 'flex', background: 'var(--c-ink)' }}
+      className="flex-col md:flex-row h-[760px] md:h-[720px]"
     >
-      {/* Embla viewport */}
-      <div ref={emblaRef} style={{ position: 'absolute', inset: 0 }}>
-        <div style={{ display: 'flex', height: '100%' }}>
-          {slides.map((img, i) => (
-            <div
-              key={i}
-              style={{
-                flex: '0 0 100%',
-                position: 'relative',
-                background: '#141412',
-              }}
-            >
-              {img ? (
-                <Image
-                  src={img.src}
-                  alt={img.alt}
-                  fill
-                  className="cover-image"
-                  priority={i === 0}
-                  sizes="100vw"
-                />
-              ) : (
-                /* Dark editorial placeholder */
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: `linear-gradient(135deg, #141412 0%, #0A0A0A 100%)`,
-                  }}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Gradient overlay */}
+      {/* Copy panel */}
       <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'linear-gradient(180deg, rgba(10,10,10,0.45) 0%, rgba(10,10,10,0) 28%, rgba(10,10,10,0) 60%, rgba(10,10,10,0.55) 100%)',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Side rail — desktop only */}
-      <div
-        className="hidden md:block"
-        style={{
-          position: 'absolute',
-          left: 24,
-          top: '50%',
-          transform: 'translateY(-50%) rotate(-90deg)',
-          transformOrigin: 'left center',
-          color: 'var(--c-bone)',
-        }}
+        style={{ color: 'var(--c-bone)' }}
+        className="flex flex-col justify-center order-2 md:order-1 md:flex-none md:basis-[42%] px-[22px] pt-[40px] pb-[44px] md:p-0 md:px-[56px]"
       >
-        <Mono size={10} op={0.78} style={{ color: 'inherit' }}>
-          01 · The Crossover Edit
-        </Mono>
-      </div>
-
-      {/* Fig caption */}
-      <div
-        style={{
-          position: 'absolute',
-          color: 'var(--c-bone)',
-        }}
-        className="left-[22px] md:left-[48px] bottom-[110px] md:bottom-[32px]"
-      >
-        <Mono size={9} op={0.7} style={{ color: 'inherit' }}>
-          FIG. 01 · Lisbon · 04.26
-        </Mono>
-      </div>
-
-      {/* Center copy */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          color: 'var(--c-bone)',
-          pointerEvents: 'none',
-        }}
-        className="px-[22px] md:px-[48px]"
-      >
-        <Mono size={10} op={0.85} style={{ color: 'inherit', marginBottom: 18 }}>
+        <Mono size={10} op={0.75} style={{ color: 'inherit', marginBottom: 18 }}>
           Introducing SS26
         </Mono>
 
         <h1
           style={{
-            fontFamily: GHEAD,
-            fontWeight: 400,
-            fontSize: 'clamp(56px, 9vw, 124px)',
-            lineHeight: 0.95,
-            letterSpacing: '-0.035em',
+            fontFamily: HHEAD,
+            fontWeight: 500,
+            fontSize: 'clamp(42px, 5.5vw, 64px)',
+            lineHeight: 1.0,
+            letterSpacing: '-0.025em',
             margin: 0,
-            maxWidth: 1100,
+            maxWidth: 460,
           }}
         >
           The Crossover{' '}
           <span
             style={{
-              fontFamily: FSERIF,
+              fontFamily: HSERIF,
               fontStyle: 'italic',
               fontWeight: 400,
               letterSpacing: '-0.02em',
@@ -158,26 +68,23 @@ export default function Hero({ images }: { images: { src: string; alt: string }[
 
         <p
           style={{
-            fontFamily: FBODY,
-            opacity: 0.88,
-            maxWidth: 520,
-            lineHeight: 1.55,
+            fontFamily: HBODY,
+            opacity: 0.8,
+            maxWidth: 420,
+            lineHeight: 1.6,
           }}
-          className="text-[14px] md:text-[16px] mt-[18px] mb-[26px] md:mt-[24px] md:mb-[36px]"
+          className="text-[14px] md:text-[15.5px] mt-[18px] mb-[26px] md:mt-[22px] md:mb-[32px]"
         >
           Breathable performance fabrics, drawn in the language of restraint.
           Move-everywhere essentials for daily wear.
         </p>
 
-        <div
-          style={{ pointerEvents: 'auto' }}
-          className="flex flex-col md:flex-row gap-[14px] items-center"
-        >
+        <div className="flex flex-col md:flex-row gap-[14px] items-center md:items-center self-stretch md:self-start">
           <CTA
             size="lg"
             href="/products"
             style={{
-              fontFamily: FBODY,
+              fontFamily: HBODY,
               fontSize: 15,
               fontWeight: 500,
               letterSpacing: '-0.01em',
@@ -188,93 +95,105 @@ export default function Hero({ images }: { images: { src: string; alt: string }[
             Shop the collection →
           </CTA>
           <span className="hidden md:inline">
-            <UnderLink style={{ color: '#F5F4F0', borderColor: '#F5F4F0' }}>
+            <UnderLink style={{ color: '#F5F4F0', borderColor: 'rgba(245,244,240,0.5)' }}>
               Watch the film (1:32)
             </UnderLink>
           </span>
         </div>
+
+        {/* Slide dots */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+          className="mt-[28px] md:mt-[44px]"
+        >
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              aria-label={`Go to slide ${i + 1}`}
+              onClick={() => emblaApi?.scrollTo(i)}
+              style={{
+                width: i === idx ? 22 : 6,
+                height: 6,
+                background: i === idx ? 'var(--c-bone)' : 'rgba(245,244,240,0.35)',
+                borderRadius: 'var(--r-pill)',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'width 0.3s ease, background 0.3s ease',
+              }}
+            />
+          ))}
+          <Mono size={9} op={0.6} style={{ color: 'inherit', marginLeft: 6 }}>
+            0{idx + 1} / 0{slides.length}
+          </Mono>
+        </div>
       </div>
 
-      {/* Slide dots */}
+      {/* Image panel — duotone scrim unifies whatever photo lands here */}
       <div
-        style={{
-          position: 'absolute',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          color: 'var(--c-bone)',
-        }}
-        className="bottom-[22px] right-[22px] md:bottom-[32px] md:right-[48px]"
+        style={{ position: 'relative', overflow: 'hidden' }}
+        className="order-1 md:order-2 flex-1 h-[420px] md:h-auto"
       >
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            aria-label={`Go to slide ${i + 1}`}
-            onClick={() => emblaApi?.scrollTo(i)}
-            style={{
-              width: i === idx ? 22 : 6,
-              height: 6,
-              background: i === idx ? 'var(--c-bone)' : 'rgba(245,244,240,0.4)',
-              borderRadius: 'var(--r-pill)',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              transition: 'width 0.3s ease, background 0.3s ease',
-            }}
-          />
-        ))}
-        <Mono size={9} op={0.7} style={{ color: 'inherit', marginLeft: 6 }}>
-          0{idx + 1} / 0{slides.length}
-        </Mono>
-      </div>
+        <div ref={emblaRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', height: '100%' }}>
+            {slides.map((img, i) => (
+              <div
+                key={i}
+                style={{ flex: '0 0 100%', position: 'relative', background: '#141412' }}
+              >
+                {img ? (
+                  <Image
+                    src={img.src}
+                    alt={img.alt}
+                    fill
+                    className="cover-image"
+                    style={{ filter: 'saturate(0.92) contrast(1.05)' }}
+                    priority={i === 0}
+                    sizes="(max-width: 768px) 100vw, 58vw"
+                  />
+                ) : (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(135deg, #141412 0%, #0A0A0A 100%)',
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {/* Prev / Next arrows — desktop only */}
-      <button
-        aria-label="Previous slide"
-        onClick={prev}
-        className="hidden md:flex"
-        style={{
-          position: 'absolute',
-          left: 48,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 44,
-          height: 44,
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--c-bone)',
-          fontSize: 28,
-          opacity: 0.7,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        ‹
-      </button>
-      <button
-        aria-label="Next slide"
-        onClick={next}
-        className="hidden md:flex"
-        style={{
-          position: 'absolute',
-          right: 48,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 44,
-          height: 44,
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--c-bone)',
-          fontSize: 28,
-          opacity: 0.7,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        ›
-      </button>
+        {/* Duotone + vignette scrim */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(200deg, rgba(12,12,12,0.55) 0%, rgba(12,12,12,0.05) 35%, rgba(12,12,12,0.05) 65%, rgba(12,12,12,0.6) 100%)',
+            mixBlendMode: 'multiply',
+            pointerEvents: 'none',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            boxShadow: 'inset 0 0 120px rgba(0,0,0,0.5)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <div
+          style={{ position: 'absolute', color: 'var(--c-bone)' }}
+          className="left-[20px] bottom-[16px] md:left-[32px] md:bottom-[28px]"
+        >
+          <Mono size={9} op={0.75} style={{ color: 'inherit' }}>
+            FIG. 01 · Lisbon · 04.26
+          </Mono>
+        </div>
+      </div>
     </section>
   )
 }

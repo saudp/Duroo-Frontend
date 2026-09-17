@@ -38,7 +38,7 @@ export default function FabricMoment() {
             op={0.7}
             style={{ color: 'inherit', display: 'block', marginBottom: 14 }}
           >
-            The fabric · Crossover Stretch
+            The detail · Crossover Stretch
           </Mono>
 
           <h2
@@ -46,12 +46,12 @@ export default function FabricMoment() {
               fontFamily: FHEAD,
               fontWeight: 500,
               letterSpacing: '-0.035em',
-              lineHeight: 0.95,
+              lineHeight: 0.98,
               margin: 0,
-              fontSize: 'clamp(64px, 10vw, 132px)',
+              fontSize: 'clamp(56px, 8vw, 108px)',
             }}
           >
-            Wrinkle{' '}
+            Built{' '}
             <span
               style={{
                 fontWeight: 700,
@@ -60,7 +60,7 @@ export default function FabricMoment() {
                 padding: '0 14px 4px',
               }}
             >
-              FREE.
+              to last.
             </span>
           </h2>
 
@@ -73,13 +73,13 @@ export default function FabricMoment() {
             }}
             className="text-[13px] md:text-[15px] mt-4 md:mt-[22px] px-[22px] md:px-0"
           >
-            A four-way stretch poplin developed with our mill in Biella. Packs
-            flat, breathes, never asks for an iron.
+            Every piece is cut, finished, and quality-checked by hand before it
+            ships. Slower than most — and it shows in how it wears in.
           </p>
 
           <div className="mt-[22px] md:mt-7">
             <CTA size="lg" href="/collections/crossover">
-              Explore the fabric →
+              Explore the craft →
             </CTA>
           </div>
         </div>
